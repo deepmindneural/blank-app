@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print & Copy - Asistente Virtual</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1>🖨️ Print & Copy</h1>
+                <p>Tu asistente virtual para productos personalizados</p>
+                <button class="close-btn" onclick="toggleChat()">&times;</button>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot">
+                    <div class="avatar">PC</div>
+                    <div class="message-content">
+                        ¡Hola! 👋 Soy tu asistente virtual de Print & Copy. Para brindarte el mejor servicio, necesito algunos datos tuyos primero.
+                        
+                        <div class="user-form" id="userForm">
+                            <div class="form-group">
+                                <label for="userName">Nombre:</label>
+                                <input type="text" id="userName" placeholder="Tu nombre completo">
+                            </div>
+                            <div class="form-group">
+                                <label for="userEmail">Correo electrónico:</label>
+                                <input type="email" id="userEmail" placeholder="tu@email.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="userPhone">Teléfono:</label>
+                                <input type="tel" id="userPhone" placeholder="+34 000 000 000">
+                            </div>
+                            <button class="form-btn" onclick="saveUserData()">Continuar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <div class="input-group">
+                    <input type="text" id="messageInput" placeholder="Pregúntame sobre nuestros productos..." disabled>
+                    <button class="send-btn" onclick="sendMessage()" disabled id="sendBtn">Enviar</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="quote-container">
+            <div class="quote-header">
+                <h2>💼 Cotización</h2>
+            </div>
+            
+            <div class="user-info">
+                <h3>📋 Datos del Cliente</h3>
+                <div class="info-item">
+                    <span>Nombre:</span>
+                    <span id="displayName">-</span>
+                </div>
+                <div class="info-item">
+                    <span>Email:</span>
+                    <span id="displayEmail">-</span>
+                </div>
+                <div class="info-item">
+                    <span>Teléfono:</span>
+                    <span id="displayPhone">-</span>
+                </div>
+            </div>
+
+            <div class="quote-items">
+                <h3>🛒 Productos Cotizados</h3>
+                <div id="quoteList">
+                    <p style="text-align: center; color: #64748b; font-style: italic;">
+                        Aún no has agregado productos
+                    </p>
+                </div>
+            </div>
+
+            <div class="total">
+                <div class="total-amount" id="totalAmount">0,00€</div>
+                <p style="color: #64748b; margin-top: 5px;">Total (IVA incluido)</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/products.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/quotes.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/scripts.js"></script>
+</body>
+</html>

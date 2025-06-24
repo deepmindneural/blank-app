@@ -48,6 +48,11 @@ function initLocalStorage() {
     if (!localStorage.getItem('printCopyChatHistory')) {
         localStorage.setItem('printCopyChatHistory', JSON.stringify([]));
     }
+    
+    // Inicializar historial de cotizaciones de todos los usuarios
+    if (!localStorage.getItem('printCopyAllQuotes')) {
+        localStorage.setItem('printCopyAllQuotes', JSON.stringify([]));
+    }
 }
 
 // Configurar event listeners
@@ -179,6 +184,140 @@ function validateEmail(email) {
     return re.test(email);
 }
 
+// 🆕 NUEVA FUNCIÓN: Iniciar nuevo cliente
+function newClient() {
+    // Verificar si hay una cotización actual
+    const currentQuote = JSON.parse(localStorage.getItem('printCopyQuotedItems')) || [];
+    const currentUser = JSON.parse(localStorage.getItem('printCopyUserData')) || {};
+    
+    if (currentQuote.length > 0 && currentUser.name) {
+        showConfirmModal(
+            '🔄 Nuevo Cliente',
+            `¿Deseas guardar la cotización actual de ${currentUser.name} (${currentQuote.length} productos, ${calculateTotal(currentQuote).toFixed(2)}€) antes de iniciar con un nuevo cliente?`,
+            () => {
+                saveCurrentQuote();
+                resetForNewClient();
+            },
+            () => {
+                resetForNewClient();
+            },
+            'Guardar y Continuar',
+            'Descartar'
+        );
+    } else {
+        resetForNewClient();
+    }
+}
+
+// Calcular total de una cotización
+function calculateTotal(items) {
+    return items.reduce((total, item) => total + (item.totalPrice || 0), 0);
+}
+
+// Guardar cotización actual en el historial
+function saveCurrentQuote() {
+    const currentUser = JSON.parse(localStorage.getItem('printCopyUserData')) || {};
+    const currentQuote = JSON.parse(localStorage.getItem('printCopyQuotedItems')) || [];
+    
+    if (currentUser.name && currentQuote.length > 0) {
+        const allQuotes = JSON.parse(localStorage.getItem('printCopyAllQuotes')) || [];
+        
+        const quoteRecord = {
+            id: Date.now(),
+            date: new Date().toISOString(),
+            user: {
+                name: currentUser.name,
+                email: currentUser.email,
+                phone: currentUser.phone
+            },
+            items: currentQuote,
+            total: calculateTotal(currentQuote),
+            status: 'Guardada'
+        };
+        
+        allQuotes.unshift(quoteRecord); // Agregar al inicio
+        localStorage.setItem('printCopyAllQuotes', JSON.stringify(allQuotes));
+        
+        // Mostrar confirmación
+        showMessage('✅ Cotización guardada correctamente', 'success');
+    }
+}
+
+// Resetear para nuevo cliente
+function resetForNewClient() {
+    // Limpiar datos del usuario actual
+    localStorage.removeItem('printCopyUserData');
+    localStorage.removeItem('printCopyQuotedItems');
+    localStorage.removeItem('printCopyChatHistory');
+    
+    // Reinicializar variables
+    userData = { name: '', email: '', phone: '' };
+    quotedItems = [];
+    
+    // Limpiar interfaz
+    const messagesContainer = document.getElementById('chatMessages');
+    if (messagesContainer) {
+        messagesContainer.innerHTML = `
+            <div class="message bot">
+                <div class="avatar">PC</div>
+                <div class="message-content">
+                    ¡Hola! 👋 Soy tu asistente virtual de Print & Copy. Para brindarte el mejor servicio, necesito algunos datos tuyos primero.
+                    
+                    <div class="user-form" id="userForm">
+                        <div class="form-group">
+                            <label for="userName">Nombre:</label>
+                            <input type="text" id="userName" placeholder="Tu nombre completo">
+                        </div>
+                        <div class="form-group">
+                            <label for="userEmail">Correo electrónico:</label>
+                            <input type="email" id="userEmail" placeholder="tu@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="userPhone">Teléfono:</label>
+                            <input type="tel" id="userPhone" placeholder="+34 000 000 000">
+                        </div>
+                        <button class="form-btn" onclick="saveUserData()">Continuar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Resetear cotización
+    updateQuoteDisplay();
+    
+    // Resetear información del usuario
+    const displayName = document.getElementById('displayName');
+    const displayEmail = document.getElementById('displayEmail');
+    const displayPhone = document.getElementById('displayPhone');
+    
+    if (displayName) displayName.textContent = '-';
+    if (displayEmail) displayEmail.textContent = '-';
+    if (displayPhone) displayPhone.textContent = '-';
+    
+    // Deshabilitar chat
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    if (messageInput) {
+        messageInput.disabled = true;
+        messageInput.placeholder = "Pregúntame sobre nuestros productos...";
+        messageInput.value = '';
+    }
+    if (sendBtn) sendBtn.disabled = true;
+    
+    // Enfocar en el nombre del nuevo usuario
+    setTimeout(() => {
+        const userNameInput = document.getElementById('userName');
+        if (userNameInput) userNameInput.focus();
+    }, 100);
+}
+
+// 🆕 NUEVA FUNCIÓN: Abrir panel de administración
+function openAdmin() {
+    window.open('admin.html', '_blank');
+}
+
 // Mostrar/Ocultar el chat
 function toggleChat() {
     const chatContainer = document.querySelector('.chat-container');
@@ -304,4 +443,75 @@ function addMessage(sender, content, saveToHistory = true) {
     if (saveToHistory && currentUserData.name) {
         saveChatHistory(sender, content);
     }
+}
+
+// 🆕 NUEVA FUNCIÓN: Mostrar modal de confirmación
+function showConfirmModal(title, message, onConfirm, onCancel, confirmText = 'Confirmar', cancelText = 'Cancelar') {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal">
+            <h3>${title}</h3>
+            <p>${message}</p>
+            <div class="modal-buttons">
+                <button class="modal-btn primary" onclick="confirmAction()">${confirmText}</button>
+                <button class="modal-btn secondary" onclick="cancelAction()">${cancelText}</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Funciones globales temporales
+    window.confirmAction = () => {
+        document.body.removeChild(modal);
+        onConfirm();
+        delete window.confirmAction;
+        delete window.cancelAction;
+    };
+    
+    window.cancelAction = () => {
+        document.body.removeChild(modal);
+        onCancel();
+        delete window.confirmAction;
+        delete window.cancelAction;
+    };
+}
+
+// 🆕 NUEVA FUNCIÓN: Mostrar mensaje temporal
+function showMessage(message, type = 'info') {
+    const messageEl = document.createElement('div');
+    messageEl.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        z-index: 1001;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        ${type === 'success' ? 'background: #10b981;' : 
+          type === 'error' ? 'background: #dc2626;' : 
+          'background: #4f46e5;'}
+    `;
+    messageEl.textContent = message;
+    
+    document.body.appendChild(messageEl);
+    
+    // Animar entrada
+    setTimeout(() => {
+        messageEl.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remover después de 3 segundos
+    setTimeout(() => {
+        messageEl.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (document.body.contains(messageEl)) {
+                document.body.removeChild(messageEl);
+            }
+        }, 300);
+    }, 3000);
 }

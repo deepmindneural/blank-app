@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print & Copy - Panel de Administración</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .admin-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #4f46e5;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 16px;
+        }
+
+        .section {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #334155;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+        }
+
+        .button.secondary {
+            background: #64748b;
+        }
+
+        .button.danger {
+            background: #dc2626;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status.error {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .back-link a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="header">
+            <h1>🔧 Panel de Administración</h1>
+            <p>Configuración del Chatbot Print & Copy</p>
+        </div>
+
+        <div class="info-box">
+            <h3>ℹ️ Información Importante</h3>
+            <p>Este panel te permite configurar la API key de OpenAI para habilitar ChatGPT en tu chatbot. La configuración se guarda localmente en tu navegador y es segura.</p>
+        </div>
+
+        <div class="section">
+            <h2>🤖 Configuración de ChatGPT</h2>
+            <div id="apiStatus" class="status info">
+                Verificando configuración...
+            </div>
+            
+            <div class="form-group">
+                <label for="apiKey">API Key de OpenAI:</label>
+                <input type="password" id="apiKey" placeholder="sk-...">
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="button" onclick="saveApiKey()">💾 Guardar</button>
+                <button class="button secondary" onclick="testApiKey()">🧪 Probar</button>
+                <button class="button danger" onclick="removeApiKey()">🗑️ Eliminar</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Estadísticas</h2>
+            <div id="stats">
+                <p><strong>Usuario registrado:</strong> <span id="userName">-</span></p>
+                <p><strong>Mensajes en historial:</strong> <span id="messageCount">-</span></p>
+                <p><strong>Productos cotizados:</strong> <span id="quoteCount">-</span></p>
+                <p><strong>Total cotización:</strong> <span id="totalAmount">-</span></p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🗄️ Gestión de Datos</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="button secondary" onclick="exportData()">📤 Exportar Datos</button>
+                <button class="button danger" onclick="clearAllData()">🧹 Limpiar Todo</button>
+            </div>
+        </div>
+
+        <div class="back-link">
+            <a href="index.html">← Volver al Chatbot</a>
+        </div>
+    </div>
+
+    <script src="js/products.js"></script>
+    <script src="js/config.js"></script>
+    <script>
+        // Verificar estado inicial
+        window.addEventListener('DOMContentLoaded', function() {
+            updateStatus();
+            loadStats();
+        });
+
+        function updateStatus() {
+            const statusEl = document.getElementById('apiStatus');
+            const apiKeyInput = document.getElementById('apiKey');
+            
+            if (hasApiKey()) {
+                statusEl.className = 'status success';
+                statusEl.textContent = '✅ ChatGPT configurado y listo';
+                apiKeyInput.placeholder = 'API Key configurada (oculta por seguridad)';
+            } else {
+                statusEl.className = 'status info';
+                statusEl.textContent = '⚠️ ChatGPT no configurado - Usando modo inteligente';
+                apiKeyInput.placeholder = 'sk-proj-...';
+            }
+        }
+
+        function saveApiKey() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            if (!apiKey) {
+                showMessage('error', 'Por favor ingresa una API key válida');
+                return;
+            }
+
+            if (!apiKey.startsWith('sk-')) {
+                showMessage('error', 'La API key debe comenzar con "sk-"');
+                return;
+            }
+
+            setApiKey(apiKey);
+            document.getElementById('apiKey').value = '';
+            updateStatus();
+            showMessage('success', '✅ API Key guardada correctamente');
+        }
+
+        async function testApiKey() {
+            const apiKey = getApiKey();
+            
+            if (!apiKey) {
+                showMessage('error', 'No hay API key configurada para probar');
+                return;
+            }
+
+            showMessage('info', '🧪 Probando conexión con OpenAI...');
+
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [{ role: 'user', content: 'Test' }],
+                        max_tokens: 5,
+                    }),
+                });
+
+                if (response.ok) {
+                    showMessage('success', '✅ Conexión exitosa con OpenAI');
+                } else {
+                    const errorData = await response.json();
+                    showMessage('error', `❌ Error: ${errorData.error?.message || 'API key inválida'}`);
+                }
+            } catch (error) {
+                showMessage('error', `❌ Error de conexión: ${error.message}`);
+            }
+        }
+
+        function removeApiKey() {
+            if (confirm('¿Estás seguro de que quieres eliminar la API key?')) {
+                removeApiKey();
+                updateStatus();
+                showMessage('success', '🗑️ API Key eliminada');
+            }
+        }
+
+        function loadStats() {
+            try {
+                const userData = JSON.parse(localStorage.getItem('printCopyUserData')) || {};
+                const chatHistory = JSON.parse(localStorage.getItem('printCopyChatHistory')) || [];
+                const quotedItems = JSON.parse(localStorage.getItem('printCopyQuotedItems')) || [];
+                
+                document.getElementById('userName').textContent = userData.name || 'No registrado';
+                document.getElementById('messageCount').textContent = chatHistory.length;
+                document.getElementById('quoteCount').textContent = quotedItems.length;
+                
+                const total = quotedItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+                document.getElementById('totalAmount').textContent = total.toFixed(2) + '€';
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function exportData() {
+            try {
+                const data = {
+                    userData: JSON.parse(localStorage.getItem('printCopyUserData') || '{}'),
+                    chatHistory: JSON.parse(localStorage.getItem('printCopyChatHistory') || '[]'),
+                    quotedItems: JSON.parse(localStorage.getItem('printCopyQuotedItems') || '[]'),
+                    exportDate: new Date().toISOString()
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `print-copy-data-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                showMessage('success', '📤 Datos exportados correctamente');
+            } catch (error) {
+                showMessage('error', '❌ Error al exportar datos');
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ ¿Estás seguro? Esto eliminará TODOS los datos del chatbot (usuario, historial, cotizaciones).')) {
+                localStorage.removeItem('printCopyUserData');
+                localStorage.removeItem('printCopyChatHistory');
+                localStorage.removeItem('printCopyQuotedItems');
+                
+                loadStats();
+                showMessage('success', '🧹 Todos los datos han sido eliminados');
+            }
+        }
+
+        function showMessage(type, message) {
+            const statusEl = document.getElementById('apiStatus');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+            
+            setTimeout(() => {
+                updateStatus();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

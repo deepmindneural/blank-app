@@ -50,11 +50,37 @@ body {
     font-size: 14px;
 }
 
-.close-btn {
+.header-buttons {
     position: absolute;
     right: 20px;
     top: 50%;
     transform: translateY(-50%);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.header-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.header-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.1);
+}
+
+.close-btn {
     background: rgba(255,255,255,0.2);
     border: none;
     color: white;
@@ -63,6 +89,7 @@ body {
     border-radius: 50%;
     cursor: pointer;
     font-size: 18px;
+    transition: all 0.3s ease;
 }
 
 .close-btn:hover {
@@ -319,6 +346,71 @@ body {
     display: none !important;
 }
 
+/* Nuevas clases para modal de confirmación */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.modal h3 {
+    color: #334155;
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+.modal p {
+    color: #64748b;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.modal-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.modal-btn:hover {
+    transform: translateY(-2px);
+}
+
+.modal-btn.primary {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+}
+
+.modal-btn.secondary {
+    background: #64748b;
+    color: white;
+}
+
 @media (max-width: 768px) {
     .container {
         flex-direction: column;
@@ -327,5 +419,12 @@ body {
     .quote-container {
         width: 100%;
         order: -1;
+    }
+    
+    .header-buttons {
+        position: static;
+        transform: none;
+        margin-top: 10px;
+        justify-content: center;
     }
 }

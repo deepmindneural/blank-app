@@ -1,4 +1,4 @@
-// Funciones para el manejo del chat
+// Funciones para el manejo del chat - Compatible con Coolify
 
 // Mostrar indicador de escritura
 function showTyping() {
@@ -41,18 +41,53 @@ function removeTyping() {
     }
 }
 
+// Verificar si estamos en un servidor con variables de entorno
+async function checkServerConfig() {
+    try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+            const config = await response.json();
+            return config;
+        }
+    } catch (error) {
+        console.log('No hay servidor backend disponible, usando modo cliente');
+    }
+    return null;
+}
+
 // Función principal para obtener respuesta del bot
 async function getBotResponse(userMessage) {
     // Obtener datos del usuario desde localStorage
     const userData = JSON.parse(localStorage.getItem('printCopyUserData')) || {};
     const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
+    const chatHistory = JSON.parse(localStorage.getItem('printCopyChatHistory')) || [];
     
-    // Si hay una clave API configurada, usar ChatGPT
-    if (OPENAI_API_KEY && OPENAI_API_KEY.trim() !== '') {
+    // Verificar si hay servidor backend con variables de entorno
+    const serverConfig = await checkServerConfig();
+    
+    if (serverConfig && serverConfig.hasApiKey) {
         try {
-            return await getChatGPTResponse(userMessage, userData, products);
+            return await getServerChatGPTResponse(userMessage, userData, products, chatHistory);
         } catch (error) {
-            console.error('Error con ChatGPT:', error);
+            console.error('Error con servidor backend:', error);
+            // Fallback a modo cliente
+        }
+    }
+    
+    // Verificar si hay API key configurada en el cliente
+    const apiKey = getApiKey();
+    if (apiKey && apiKey.trim() !== '') {
+        try {
+            return await getClientChatGPTResponse(userMessage, userData, products, apiKey);
+        } catch (error) {
+            console.error('Error con ChatGPT cliente:', error);
+            
+            // Si es error de API key, ofrecer reconfigurar
+            if (error.message.includes('401') || error.message.includes('invalid')) {
+                removeApiKey();
+                return `❌ Tu API Key parece ser inválida. ${userData.name || 'Cliente'}, ¿quieres configurar una nueva API key? Escribe "configurar api" o continuaré con respuestas inteligentes.`;
+            }
+            
             // Fallback a respuestas simuladas
             return getSmartResponse(userMessage, userData, products);
         }
@@ -62,8 +97,38 @@ async function getBotResponse(userMessage) {
     return getSmartResponse(userMessage, userData, products);
 }
 
-// Función para obtener respuesta de ChatGPT
-async function getChatGPTResponse(userMessage, userData, products) {
+// Función para obtener respuesta usando el servidor backend
+async function getServerChatGPTResponse(userMessage, userData, products, chatHistory) {
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: userMessage,
+                userData,
+                products,
+                chatHistory: chatHistory.slice(-5) // Solo los últimos 5 mensajes
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Server Error: ${errorData.error || response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.response;
+        
+    } catch (error) {
+        console.error('Error en getServerChatGPTResponse:', error);
+        throw error;
+    }
+}
+
+// Función para obtener respuesta usando API key del cliente
+async function getClientChatGPTResponse(userMessage, userData, products, apiKey) {
     try {
         // Obtener historial de chat reciente (últimos 5 mensajes) para dar contexto
         const chatHistory = JSON.parse(localStorage.getItem('printCopyChatHistory')) || [];
@@ -97,7 +162,7 @@ Pregunta actual: ${userMessage}`;
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -117,7 +182,7 @@ Pregunta actual: ${userMessage}`;
         return data.choices[0].message.content;
         
     } catch (error) {
-        console.error('Error en getChatGPTResponse:', error);
+        console.error('Error en getClientChatGPTResponse:', error);
         throw error;
     }
 }
@@ -127,9 +192,23 @@ function getSmartResponse(userMessage, userData, products) {
     const message = userMessage.toLowerCase();
     const userName = userData.name || 'cliente';
     
+    // Detectar comando para configurar API
+    if (message.includes('configurar api') || message.includes('api key') || message.includes('chatgpt')) {
+        const configured = promptForApiKey();
+        if (configured) {
+            return `🤖 ¡Perfecto! Ahora estoy usando ChatGPT real. Hazme cualquier pregunta sobre nuestros productos, ${userName}!`;
+        } else {
+            return `👍 No hay problema, ${userName}. Continuaré ayudándote con mi sistema inteligente. ¿En qué puedo ayudarte?`;
+        }
+    }
+    
     // Detectar saludos
     if (message.includes('hola') || message.includes('buenos') || message.includes('buenas') || message.includes('hi')) {
-        return `¡Hola ${userName}! 😊 ¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquiera de nuestros productos, precios, o pedir una cotización.`;
+        const configStatus = getConfigStatus();
+        const apiStatus = configStatus.configured ? 
+            `🤖 (Usando ChatGPT via ${configStatus.source})` : 
+            '🧠 (Modo inteligente - escribe "configurar api" para ChatGPT)';
+        return `¡Hola ${userName}! 😊 ${apiStatus}\n\n¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquiera de nuestros productos, precios, o pedir una cotización.`;
     }
     
     // Detectar productos específicos
@@ -169,11 +248,13 @@ function getSmartResponse(userMessage, userData, products) {
     
     // Detectar ayuda
     if (message.includes('ayuda') || message.includes('help') || message.includes('como funciona') || message.includes('cómo funciona')) {
-        return `¡Por supuesto, ${userName}! Estoy aquí para ayudarte 🤖\n\n🔍 **Puedes preguntarme sobre:**\n• Precios de productos específicos\n• Información detallada de cualquier producto\n• Generar cotizaciones automáticas\n• Recomendar productos para eventos\n\n💬 **Ejemplos de preguntas:**\n• "¿Cuánto cuestan 50 tazas?"\n• "Necesito productos para una boda"\n• "Quiero cotizar 100 abanicos"\n\n¡Solo escribe tu pregunta naturalmente!`;
+        return `¡Por supuesto, ${userName}! Estoy aquí para ayudarte 🤖\n\n🔍 **Puedes preguntarme sobre:**\n• Precios de productos específicos\n• Información detallada de cualquier producto\n• Generar cotizaciones automáticas\n• Recomendar productos para eventos\n\n💬 **Ejemplos de preguntas:**\n• "¿Cuánto cuestan 50 tazas?"\n• "Necesito productos para una boda"\n• "Quiero cotizar 100 abanicos"\n\n🔑 **ChatGPT**: Escribe "configurar api" para usar ChatGPT real\n\n¡Solo escribe tu pregunta naturalmente!`;
     }
     
     // Respuesta por defecto
-    return `¡Hola ${userName}! 😊 Puedo ayudarte con información sobre:\n\n📋 **Papelería**: Recordatorios, marcapáginas, etiquetas\n💒 **Bodas**: Invitaciones, seating plans, libros de firmas\n🎁 **Personalizados**: Tazas, llaveros, chapas, imanes\n🌸 **Abanicos**: Lencer, Kronix, Madera, Bilsom\n💡 **Neones**: Alquiler con entrega gratis\n\n¿Qué te interesa? También puedo generar cotizaciones específicas si me dices el producto y la cantidad. 🛒`;
+    const configStatus = getConfigStatus();
+    const apiHint = configStatus.configured ? '' : '\n\n💡 Tip: Escribe "configurar api" para usar ChatGPT';
+    return `¡Hola ${userName}! 😊 Puedo ayudarte con información sobre:\n\n📋 **Papelería**: Recordatorios, marcapáginas, etiquetas\n💒 **Bodas**: Invitaciones, seating plans, libros de firmas\n🎁 **Personalizados**: Tazas, llaveros, chapas, imanes\n🌸 **Abanicos**: Lencer, Kronix, Madera, Bilsom\n💡 **Neones**: Alquiler con entrega gratis\n\n¿Qué te interesa? También puedo generar cotizaciones específicas si me dices el producto y la cantidad. 🛒${apiHint}`;
 }
 
 // Obtener información detallada de un producto

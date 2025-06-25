@@ -1,4 +1,4 @@
-// Funciones para el manejo de cotizaciones
+// Funciones para el manejo de cotizaciones - CORREGIDO
 
 // Procesar mensaje para cotización
 function processMessageForQuote(message) {
@@ -69,6 +69,71 @@ function addToQuote(productKey, product, quantity) {
         
         // Actualizar visualización
         updateQuoteDisplay(quotedItems);
+        
+        // 🆕 AUTO-GUARDAR: Actualizar cotización en tiempo real
+        autoSaveCurrentQuote();
+        
+        console.log('Producto agregado a cotización:', item.name, quantity, 'unidades');
+    }
+}
+
+// 🆕 NUEVA FUNCIÓN: Auto-guardar cotización en tiempo real
+function autoSaveCurrentQuote() {
+    const userData = JSON.parse(localStorage.getItem('printCopyUserData')) || {};
+    const quotedItems = JSON.parse(localStorage.getItem('printCopyQuotedItems')) || [];
+    
+    if (userData.name && quotedItems.length > 0) {
+        let allQuotes = JSON.parse(localStorage.getItem('printCopyAllQuotes')) || [];
+        
+        // Buscar si ya existe una cotización en progreso para este usuario
+        const existingIndex = allQuotes.findIndex(quote => 
+            quote.user.email === userData.email && quote.status === 'En Progreso'
+        );
+        
+        const quoteRecord = {
+            id: existingIndex >= 0 ? allQuotes[existingIndex].id : Date.now(),
+            date: new Date().toISOString(),
+            user: {
+                name: userData.name,
+                email: userData.email,
+                phone: userData.phone
+            },
+            items: quotedItems,
+            total: calculateTotal(quotedItems),
+            status: 'En Progreso'
+        };
+        
+        if (existingIndex >= 0) {
+            // Actualizar cotización existente
+            allQuotes[existingIndex] = quoteRecord;
+        } else {
+            // Crear nueva cotización
+            allQuotes.unshift(quoteRecord);
+        }
+        
+        localStorage.setItem('printCopyAllQuotes', JSON.stringify(allQuotes));
+        console.log('Cotización auto-guardada para:', userData.name);
+    }
+}
+
+// 🆕 NUEVA FUNCIÓN: Finalizar cotización (cambiar estado)
+function finalizeCurrentQuote() {
+    const userData = JSON.parse(localStorage.getItem('printCopyUserData')) || {};
+    
+    if (userData.name) {
+        let allQuotes = JSON.parse(localStorage.getItem('printCopyAllQuotes')) || [];
+        
+        // Buscar cotización en progreso
+        const existingIndex = allQuotes.findIndex(quote => 
+            quote.user.email === userData.email && quote.status === 'En Progreso'
+        );
+        
+        if (existingIndex >= 0) {
+            allQuotes[existingIndex].status = 'Finalizada';
+            allQuotes[existingIndex].finalizedDate = new Date().toISOString();
+            localStorage.setItem('printCopyAllQuotes', JSON.stringify(allQuotes));
+            console.log('Cotización finalizada para:', userData.name);
+        }
     }
 }
 
@@ -105,6 +170,11 @@ function calculatePrice(product, quantity) {
     return 0;
 }
 
+// Calcular total de una cotización
+function calculateTotal(items) {
+    return items.reduce((total, item) => total + (item.totalPrice || 0), 0);
+}
+
 // Actualizar visualización de la cotización
 function updateQuoteDisplay(quotedItems = null) {
     // Si no se proporciona, cargar desde localStorage
@@ -113,6 +183,8 @@ function updateQuoteDisplay(quotedItems = null) {
     }
     
     const quoteList = document.getElementById('quoteList');
+    if (!quoteList) return;
+    
     let totalAmount = 0;
     
     if (quotedItems.length === 0) {
@@ -120,7 +192,7 @@ function updateQuoteDisplay(quotedItems = null) {
     } else {
         quoteList.innerHTML = '';
         
-        quotedItems.forEach(item => {
+        quotedItems.forEach((item, index) => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'quote-item';
             itemDiv.innerHTML = `
@@ -128,26 +200,92 @@ function updateQuoteDisplay(quotedItems = null) {
                     <div class="item-name">${item.name}</div>
                     <div class="item-quantity">${item.quantity} unidades × ${item.unitPrice.toFixed(2)}€</div>
                 </div>
-                <div class="item-price">${item.totalPrice.toFixed(2)}€</div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="item-price">${item.totalPrice.toFixed(2)}€</div>
+                    <button onclick="removeQuoteItem(${item.id})" style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;">×</button>
+                </div>
             `;
             quoteList.appendChild(itemDiv);
             totalAmount += item.totalPrice;
         });
     }
     
-    document.getElementById('totalAmount').textContent = `${totalAmount.toFixed(2)}€`;
+    const totalAmountEl = document.getElementById('totalAmount');
+    if (totalAmountEl) {
+        totalAmountEl.textContent = `${totalAmount.toFixed(2)}€`;
+    }
+    
+    // Auto-guardar cuando se actualiza la visualización
+    autoSaveCurrentQuote();
 }
 
-// Eliminar un producto de la cotización
+// 🆕 MEJORADO: Eliminar un producto de la cotización
 function removeQuoteItem(itemId) {
     const quotedItems = JSON.parse(localStorage.getItem('printCopyQuotedItems')) || [];
     const updatedItems = quotedItems.filter(item => item.id !== itemId);
     localStorage.setItem('printCopyQuotedItems', JSON.stringify(updatedItems));
     updateQuoteDisplay(updatedItems);
+    
+    console.log('Producto eliminado de cotización, ID:', itemId);
 }
 
-// Generar PDF de cotización
+// 🆕 NUEVA FUNCIÓN: Limpiar cotización actual
+function clearCurrentQuote() {
+    if (confirm('¿Estás seguro de que quieres limpiar la cotización actual?')) {
+        localStorage.setItem('printCopyQuotedItems', JSON.stringify([]));
+        updateQuoteDisplay([]);
+        console.log('Cotización actual limpiada');
+    }
+}
+
+// 🆕 NUEVA FUNCIÓN: Generar PDF de cotización
 function generateQuotePDF() {
-    // Aquí se podría implementar la generación de PDF
-    alert('Función de generación de PDF en desarrollo');
+    const userData = JSON.parse(localStorage.getItem('printCopyUserData')) || {};
+    const quotedItems = JSON.parse(localStorage.getItem('printCopyQuotedItems')) || [];
+    
+    if (!userData.name || quotedItems.length === 0) {
+        alert('No hay cotización para generar PDF');
+        return;
+    }
+    
+    // Finalizar cotización antes de generar PDF
+    finalizeCurrentQuote();
+    
+    // Generar contenido del PDF (texto plano por ahora)
+    const total = calculateTotal(quotedItems);
+    const date = new Date().toLocaleDateString('es-ES');
+    
+    const pdfContent = `
+PRINT & COPY - COTIZACIÓN
+
+Fecha: ${date}
+
+CLIENTE:
+Nombre: ${userData.name}
+Email: ${userData.email}
+Teléfono: ${userData.phone}
+
+PRODUCTOS:
+${quotedItems.map(item => 
+`• ${item.name}
+  Cantidad: ${item.quantity} unidades
+  Precio unitario: ${item.unitPrice.toFixed(2)}€
+  Subtotal: ${item.totalPrice.toFixed(2)}€`
+).join('\n\n')}
+
+TOTAL: ${total.toFixed(2)}€
+
+¡Gracias por confiar en Print & Copy!
+    `.trim();
+    
+    // Crear blob y descargar
+    const blob = new Blob([pdfContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cotizacion-${userData.name.replace(/\s+/g, '-')}-${date.replace(/\//g, '-')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    alert('Cotización descargada como archivo de texto');
 }

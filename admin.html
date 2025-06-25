@@ -280,6 +280,113 @@
             color: #1e40af;
             margin-bottom: 10px;
         }
+
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #10b981;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .product-info h4 {
+            color: #10b981;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+
+        .product-category {
+            background: #f0f9ff;
+            color: #1e40af;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .product-prices {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .price-range {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 14px;
+        }
+
+        .price-quantity {
+            color: #374151;
+        }
+
+        .price-amount {
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .product-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .product-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .product-btn.edit {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .product-btn.delete {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 {
+            color: #334155;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
     </style>
 </head>
 <body>
@@ -287,6 +394,55 @@
         <div class="header">
             <h1>🔧 Panel de Administración</h1>
             <p>Configuración del Chatbot Print & Copy</p>
+        </div>
+
+        <div class="info-box">
+            <h3>ℹ️ Información Importante</h3>
+            <p>Este panel te permite configurar la API key de OpenAI para habilitar ChatGPT en tu chatbot. La configuración se guarda localmente en tu navegador y es segura.</p>
+        </div>
+
+        <div class="section">
+            <h2>🤖 Configuración de ChatGPT</h2>
+            <div id="apiStatus" class="status info">
+                Verificando configuración...
+            </div>
+            
+            <div class="form-group">
+                <label for="apiKey">API Key de OpenAI:</label>
+                <input type="password" id="apiKey" placeholder="sk-...">
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="button" onclick="saveApiKey()">💾 Guardar</button>
+                <button class="button secondary" onclick="testApiKey()">🧪 Probar</button>
+                <button class="button danger" onclick="removeApiKey()">🗑️ Eliminar</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📦 Gestión de Productos</h2>
+            <div class="product-filters">
+                <input type="text" id="searchProducts" placeholder="🔍 Buscar productos..." 
+                       style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #ddd;">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <select id="categoryFilter" style="padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                        <option value="">Todas las categorías</option>
+                        <option value="papeleria">Papelería</option>
+                        <option value="bodas">Bodas</option>
+                        <option value="personalizados">Personalizados</option>
+                        <option value="abanicos">Abanicos</option>
+                        <option value="tecnologia">Tecnología</option>
+                        <option value="neones">Neones</option>
+                    </select>
+                    <button class="button secondary" onclick="exportProducts()">📤 Exportar Productos</button>
+                    <button class="button" onclick="addNewProduct()">➕ Agregar Producto</button>
+                </div>
+            </div>
+            <div id="productsList">
+                <p style="text-align: center; color: #64748b; font-style: italic;">
+                    Cargando productos...
+                </p>
+            </div>
         </div>
 
         <div class="section">
@@ -346,20 +502,251 @@
             updateStatus();
             loadStats();
             loadAllQuotes();
+            loadProducts();
             setupEventListeners();
         });
 
         function setupEventListeners() {
-            // Búsqueda en tiempo real
+            // Búsqueda en tiempo real para cotizaciones
             const searchInput = document.getElementById('searchQuotes');
             if (searchInput) {
                 searchInput.addEventListener('input', filterQuotes);
             }
 
-            // Ordenamiento
+            // Ordenamiento de cotizaciones
             const sortSelect = document.getElementById('sortQuotes');
             if (sortSelect) {
                 sortSelect.addEventListener('change', filterQuotes);
+            }
+
+            // Búsqueda en tiempo real para productos
+            const searchProducts = document.getElementById('searchProducts');
+            if (searchProducts) {
+                searchProducts.addEventListener('input', filterProducts);
+            }
+
+            // Filtro de categorías de productos
+            const categoryFilter = document.getElementById('categoryFilter');
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', filterProducts);
+            }
+        }
+
+        function loadProducts() {
+            try {
+                const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
+                displayProducts(Object.entries(products));
+            } catch (error) {
+                console.error('Error loading products:', error);
+                document.getElementById('productsList').innerHTML = '<p class="no-quotes">Error cargando productos</p>';
+            }
+        }
+
+        function displayProducts(productEntries) {
+            const container = document.getElementById('productsList');
+            
+            if (productEntries.length === 0) {
+                container.innerHTML = '<p class="no-quotes">📦 No hay productos disponibles</p>';
+                return;
+            }
+
+            let html = `
+                <div class="quote-summary">
+                    <h3>📦 Catálogo de Productos</h3>
+                    <p><strong>Total productos:</strong> ${productEntries.length}</p>
+                </div>
+            `;
+            
+            productEntries.forEach(([key, product]) => {
+                const category = getProductCategory(key);
+                
+                html += `
+                    <div class="product-card">
+                        <div class="product-header">
+                            <div class="product-info">
+                                <h4>📦 ${product.name}</h4>
+                                <span class="product-category">${category}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="product-prices">
+                            <strong>💰 Precios:</strong>
+                            ${getProductPricesHTML(product)}
+                        </div>
+                        
+                        <div class="product-actions">
+                            <button class="product-btn edit" onclick="editProduct('${key}')">✏️ Editar</button>
+                            <button class="product-btn delete" onclick="deleteProduct('${key}')">🗑️ Eliminar</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function getProductCategory(key) {
+            if (key.includes('abanico')) return 'Abanicos';
+            if (['invitaciones_boda', 'seating_plan', 'libro_firmas', 'marcasitios', 'menus', 'lista_boda', 'numeros_mesa'].includes(key)) return 'Bodas';
+            if (['tazas', 'chapas', 'llaveros', 'imanes', 'pulseras', 'tarjeton_balsamo'].includes(key)) return 'Personalizados';
+            if (['recordatorios', 'marcapaginas', 'etiquetas'].includes(key)) return 'Papelería';
+            if (key === 'cargador_3en1') return 'Tecnología';
+            if (key === 'neones') return 'Neones';
+            return 'Otros';
+        }
+
+        function getProductPricesHTML(product) {
+            if (product.prices) {
+                return product.prices.map(price => {
+                    if (price.min && price.max) {
+                        let range;
+                        if (price.max === Infinity) {
+                            range = `Más de ${price.min} uds`;
+                        } else if (price.min === price.max) {
+                            range = `${price.min} uds`;
+                        } else {
+                            range = `${price.min}-${price.max} uds`;
+                        }
+                        return `<div class="price-range">
+                                    <span class="price-quantity">${range}</span>
+                                    <span class="price-amount">${price.price.toFixed(2)}€</span>
+                                </div>`;
+                    } else if (price.size) {
+                        return `<div class="price-range">
+                                    <span class="price-quantity">${price.size}</span>
+                                    <span class="price-amount">${price.price.toFixed(2)}€</span>
+                                </div>`;
+                    }
+                    return '';
+                }).join('');
+            } else if (product.price) {
+                return `<div class="price-range">
+                            <span class="price-quantity">Precio fijo</span>
+                            <span class="price-amount">${product.price.toFixed(2)}€</span>
+                        </div>`;
+            } else if (product.rental_price) {
+                return `<div class="price-range">
+                            <span class="price-quantity">Alquiler</span>
+                            <span class="price-amount">${product.rental_price}€</span>
+                        </div>
+                        <div class="price-range">
+                            <span class="price-quantity">Fianza</span>
+                            <span class="price-amount">${product.deposit}€</span>
+                        </div>`;
+            }
+            return '<span class="price-quantity">Precio no disponible</span>';
+        }
+
+        function filterProducts() {
+            const searchTerm = document.getElementById('searchProducts').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
+            
+            let filteredProducts = Object.entries(products).filter(([key, product]) => {
+                const matchesSearch = product.name.toLowerCase().includes(searchTerm) || key.includes(searchTerm);
+                const category = getProductCategory(key);
+                const matchesCategory = !categoryFilter || category.toLowerCase().includes(categoryFilter);
+                return matchesSearch && matchesCategory;
+            });
+            
+            displayProducts(filteredProducts);
+        }
+
+        function editProduct(productKey) {
+            const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
+            const product = products[productKey];
+            
+            if (product) {
+                const newName = prompt(`Editar nombre del producto:\n\nActual: ${product.name}`, product.name);
+                if (newName && newName.trim() !== product.name) {
+                    product.name = newName.trim();
+                    products[productKey] = product;
+                    localStorage.setItem('printCopyProducts', JSON.stringify(products));
+                    loadProducts();
+                    showMessage('success', '✅ Producto actualizado');
+                }
+            }
+        }
+
+        function deleteProduct(productKey) {
+            const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
+            const product = products[productKey];
+            
+            if (product && confirm(`¿Estás seguro de que quieres eliminar "${product.name}"?`)) {
+                delete products[productKey];
+                localStorage.setItem('printCopyProducts', JSON.stringify(products));
+                loadProducts();
+                showMessage('success', '🗑️ Producto eliminado');
+            }
+        }
+
+        function addNewProduct() {
+            const name = prompt('Nombre del nuevo producto:');
+            if (!name || !name.trim()) return;
+            
+            const key = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            const price = parseFloat(prompt('Precio del producto (€):') || '0');
+            
+            if (price <= 0) {
+                alert('Precio inválido');
+                return;
+            }
+            
+            const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
+            products[key] = {
+                name: name.trim(),
+                price: price
+            };
+            
+            localStorage.setItem('printCopyProducts', JSON.stringify(products));
+            loadProducts();
+            showMessage('success', '✅ Producto agregado');
+        }
+
+        function exportProducts() {
+            try {
+                const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
+                
+                if (Object.keys(products).length === 0) {
+                    showMessage('error', 'No hay productos para exportar');
+                    return;
+                }
+
+                // Crear CSV
+                let csv = 'Clave,Nombre,Categoría,Tipo Precio,Precios\n';
+                Object.entries(products).forEach(([key, product]) => {
+                    const category = getProductCategory(key);
+                    let priceInfo = '';
+                    
+                    if (product.prices) {
+                        priceInfo = product.prices.map(p => {
+                            if (p.min && p.max) {
+                                return `${p.min}-${p.max}uds:${p.price}€`;
+                            } else if (p.size) {
+                                return `${p.size}:${p.price}€`;
+                            }
+                            return '';
+                        }).join('; ');
+                    } else if (product.price) {
+                        priceInfo = `${product.price}€`;
+                    } else if (product.rental_price) {
+                        priceInfo = `Alquiler:${product.rental_price}€; Fianza:${product.deposit}€`;
+                    }
+                    
+                    csv += `"${key}","${product.name}","${category}","${product.prices ? 'Por cantidad' : product.rental_price ? 'Alquiler' : 'Fijo'}","${priceInfo}"\n`;
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `productos-print-copy-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                showMessage('success', '📤 Productos exportados a CSV');
+            } catch (error) {
+                showMessage('error', '❌ Error al exportar productos');
             }
         }
 

@@ -349,6 +349,14 @@
             setupEventListeners();
         });
 
+        // Actualizar cotizaciones y estadísticas cuando cambie localStorage
+        window.addEventListener('storage', function(event) {
+            if (event.key === 'printCopyAllQuotes') {
+                loadAllQuotes();
+                loadStats();
+            }
+        });
+
         function setupEventListeners() {
             // Búsqueda en tiempo real
             const searchInput = document.getElementById('searchQuotes');

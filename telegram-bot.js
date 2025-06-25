@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuración
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'TU_BOT_TOKEN_AQUI';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8089240910:AAER0Vvfme-h_NHLQgvXozsH3Rnp5uIYnDg';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
 // Crear bot

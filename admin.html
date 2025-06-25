@@ -387,36 +387,65 @@
             margin-bottom: 15px;
             font-size: 20px;
         }
+
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            gap: 10px;
+        }
+
+        .pagination-info {
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            color: #374151;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+
+        .pagination-btn.prev-next {
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
     <div class="admin-container">
         <div class="header">
             <h1>🔧 Panel de Administración</h1>
-            <p>Configuración del Chatbot Print & Copy</p>
-        </div>
-
-        <div class="info-box">
-            <h3>ℹ️ Información Importante</h3>
-            <p>Este panel te permite configurar la API key de OpenAI para habilitar ChatGPT en tu chatbot. La configuración se guarda localmente en tu navegador y es segura.</p>
-        </div>
-
-        <div class="section">
-            <h2>🤖 Configuración de ChatGPT</h2>
-            <div id="apiStatus" class="status info">
-                Verificando configuración...
-            </div>
-            
-            <div class="form-group">
-                <label for="apiKey">API Key de OpenAI:</label>
-                <input type="password" id="apiKey" placeholder="sk-...">
-            </div>
-            
-            <div style="display: flex; gap: 10px;">
-                <button class="button" onclick="saveApiKey()">💾 Guardar</button>
-                <button class="button secondary" onclick="testApiKey()">🧪 Probar</button>
-                <button class="button danger" onclick="removeApiKey()">🗑️ Eliminar</button>
-            </div>
+            <p>Gestión del Chatbot Print & Copy</p>
         </div>
 
         <div class="section">
@@ -438,6 +467,7 @@
                     <button class="button" onclick="addNewProduct()">➕ Agregar Producto</button>
                 </div>
             </div>
+            <div id="productsPagination" class="pagination-container"></div>
             <div id="productsList">
                 <p style="text-align: center; color: #64748b; font-style: italic;">
                     Cargando productos...
@@ -470,10 +500,17 @@
                         <option value="total-asc">Menor valor primero</option>
                         <option value="name-asc">Nombre A-Z</option>
                     </select>
+                    <select id="itemsPerPage" style="padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                        <option value="5">5 por página</option>
+                        <option value="10" selected>10 por página</option>
+                        <option value="20">20 por página</option>
+                        <option value="50">50 por página</option>
+                    </select>
                     <button class="button secondary" onclick="exportAllQuotes()">📤 Exportar Todo</button>
                     <button class="button danger" onclick="clearAllQuotes()">🗑️ Limpiar Cotizaciones</button>
                 </div>
             </div>
+            <div id="quotesPagination" class="pagination-container"></div>
             <div id="allQuotesList">
                 <p style="text-align: center; color: #64748b; font-style: italic;">
                     Cargando cotizaciones...
@@ -495,11 +532,17 @@
     </div>
 
     <script src="js/products.js"></script>
-    <script src="js/config.js"></script>
     <script>
+        // Variables globales para paginación
+        let currentQuotePage = 1;
+        let currentProductPage = 1;
+        let quotesPerPage = 10;
+        let productsPerPage = 8;
+        let filteredQuotes = [];
+        let filteredProducts = [];
+
         // Verificar estado inicial
         window.addEventListener('DOMContentLoaded', function() {
-            updateStatus();
             loadStats();
             loadAllQuotes();
             loadProducts();
@@ -510,32 +553,55 @@
             // Búsqueda en tiempo real para cotizaciones
             const searchInput = document.getElementById('searchQuotes');
             if (searchInput) {
-                searchInput.addEventListener('input', filterQuotes);
+                searchInput.addEventListener('input', () => {
+                    currentQuotePage = 1;
+                    filterQuotes();
+                });
             }
 
             // Ordenamiento de cotizaciones
             const sortSelect = document.getElementById('sortQuotes');
             if (sortSelect) {
-                sortSelect.addEventListener('change', filterQuotes);
+                sortSelect.addEventListener('change', () => {
+                    currentQuotePage = 1;
+                    filterQuotes();
+                });
+            }
+
+            // Items por página para cotizaciones
+            const itemsPerPageSelect = document.getElementById('itemsPerPage');
+            if (itemsPerPageSelect) {
+                itemsPerPageSelect.addEventListener('change', (e) => {
+                    quotesPerPage = parseInt(e.target.value);
+                    currentQuotePage = 1;
+                    displayQuotes(filteredQuotes);
+                });
             }
 
             // Búsqueda en tiempo real para productos
             const searchProducts = document.getElementById('searchProducts');
             if (searchProducts) {
-                searchProducts.addEventListener('input', filterProducts);
+                searchProducts.addEventListener('input', () => {
+                    currentProductPage = 1;
+                    filterProducts();
+                });
             }
 
             // Filtro de categorías de productos
             const categoryFilter = document.getElementById('categoryFilter');
             if (categoryFilter) {
-                categoryFilter.addEventListener('change', filterProducts);
+                categoryFilter.addEventListener('change', () => {
+                    currentProductPage = 1;
+                    filterProducts();
+                });
             }
         }
 
         function loadProducts() {
             try {
                 const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
-                displayProducts(Object.entries(products));
+                filteredProducts = Object.entries(products);
+                displayProducts(filteredProducts);
             } catch (error) {
                 console.error('Error loading products:', error);
                 document.getElementById('productsList').innerHTML = '<p class="no-quotes">Error cargando productos</p>';
@@ -544,20 +610,28 @@
 
         function displayProducts(productEntries) {
             const container = document.getElementById('productsList');
+            const totalPages = Math.ceil(productEntries.length / productsPerPage);
             
             if (productEntries.length === 0) {
-                container.innerHTML = '<p class="no-quotes">📦 No hay productos disponibles</p>';
+                container.innerHTML = '<p class="no-quotes">📦 No hay productos que coincidan con la búsqueda</p>';
+                document.getElementById('productsPagination').innerHTML = '';
                 return;
             }
+
+            // Calcular índices para la página actual
+            const startIndex = (currentProductPage - 1) * productsPerPage;
+            const endIndex = startIndex + productsPerPage;
+            const pageProducts = productEntries.slice(startIndex, endIndex);
 
             let html = `
                 <div class="quote-summary">
                     <h3>📦 Catálogo de Productos</h3>
-                    <p><strong>Total productos:</strong> ${productEntries.length}</p>
+                    <p><strong>Total productos:</strong> ${productEntries.length} | 
+                       <strong>Mostrando:</strong> ${startIndex + 1}-${Math.min(endIndex, productEntries.length)}</p>
                 </div>
             `;
             
-            productEntries.forEach(([key, product]) => {
+            pageProducts.forEach(([key, product]) => {
                 const category = getProductCategory(key);
                 
                 html += `
@@ -583,6 +657,58 @@
             });
             
             container.innerHTML = html;
+            displayProductsPagination(totalPages);
+        }
+
+        function displayProductsPagination(totalPages) {
+            const container = document.getElementById('productsPagination');
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="pagination-container">';
+            
+            // Información de página
+            html += `<div class="pagination-info">Página ${currentProductPage} de ${totalPages}</div>`;
+            
+            html += '<div class="pagination-buttons">';
+            
+            // Botón anterior
+            html += `<button class="pagination-btn prev-next" onclick="changeProductPage(${currentProductPage - 1})" ${currentProductPage === 1 ? 'disabled' : ''}>‹ Anterior</button>`;
+            
+            // Números de página
+            const startPage = Math.max(1, currentProductPage - 2);
+            const endPage = Math.min(totalPages, currentProductPage + 2);
+            
+            if (startPage > 1) {
+                html += `<button class="pagination-btn" onclick="changeProductPage(1)">1</button>`;
+                if (startPage > 2) html += '<span style="padding: 8px;">...</span>';
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn ${i === currentProductPage ? 'active' : ''}" onclick="changeProductPage(${i})">${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += '<span style="padding: 8px;">...</span>';
+                html += `<button class="pagination-btn" onclick="changeProductPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            // Botón siguiente
+            html += `<button class="pagination-btn prev-next" onclick="changeProductPage(${currentProductPage + 1})" ${currentProductPage === totalPages ? 'disabled' : ''}>Siguiente ›</button>`;
+            
+            html += '</div></div>';
+            container.innerHTML = html;
+        }
+
+        function changeProductPage(newPage) {
+            const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentProductPage = newPage;
+                displayProducts(filteredProducts);
+            }
         }
 
         function getProductCategory(key) {
@@ -662,7 +788,13 @@
                     product.name = newName.trim();
                     products[productKey] = product;
                     localStorage.setItem('printCopyProducts', JSON.stringify(products));
-                    loadProducts();
+                    
+                    // Actualizar filteredProducts
+                    filteredProducts = filteredProducts.map(([key, prod]) => 
+                        key === productKey ? [key, product] : [key, prod]
+                    );
+                    
+                    displayProducts(filteredProducts);
                     showMessage('success', '✅ Producto actualizado');
                 }
             }
@@ -675,7 +807,17 @@
             if (product && confirm(`¿Estás seguro de que quieres eliminar "${product.name}"?`)) {
                 delete products[productKey];
                 localStorage.setItem('printCopyProducts', JSON.stringify(products));
-                loadProducts();
+                
+                // Actualizar filteredProducts
+                filteredProducts = filteredProducts.filter(([key]) => key !== productKey);
+                
+                // Ajustar página si es necesario
+                const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+                if (currentProductPage > totalPages && totalPages > 0) {
+                    currentProductPage = totalPages;
+                }
+                
+                displayProducts(filteredProducts);
                 showMessage('success', '🗑️ Producto eliminado');
             }
         }
@@ -695,11 +837,16 @@
             const products = JSON.parse(localStorage.getItem('printCopyProducts')) || {};
             products[key] = {
                 name: name.trim(),
-                price: price
+                price: price,
+                category: 'otros'
             };
             
             localStorage.setItem('printCopyProducts', JSON.stringify(products));
-            loadProducts();
+            
+            // Recargar productos
+            filteredProducts = Object.entries(products);
+            currentProductPage = 1;
+            displayProducts(filteredProducts);
             showMessage('success', '✅ Producto agregado');
         }
 
@@ -853,7 +1000,8 @@
         function loadAllQuotes() {
             try {
                 const allQuotes = JSON.parse(localStorage.getItem('printCopyAllQuotes')) || [];
-                displayQuotes(allQuotes);
+                filteredQuotes = allQuotes;
+                displayQuotes(filteredQuotes);
             } catch (error) {
                 console.error('Error loading quotes:', error);
                 document.getElementById('allQuotesList').innerHTML = '<p class="no-quotes">Error cargando cotizaciones</p>';
@@ -862,11 +1010,18 @@
 
         function displayQuotes(quotes) {
             const container = document.getElementById('allQuotesList');
+            const totalPages = Math.ceil(quotes.length / quotesPerPage);
             
             if (quotes.length === 0) {
-                container.innerHTML = '<p class="no-quotes">📋 No hay cotizaciones guardadas aún</p>';
+                container.innerHTML = '<p class="no-quotes">📋 No hay cotizaciones que coincidan con la búsqueda</p>';
+                document.getElementById('quotesPagination').innerHTML = '';
                 return;
             }
+
+            // Calcular índices para la página actual
+            const startIndex = (currentQuotePage - 1) * quotesPerPage;
+            const endIndex = startIndex + quotesPerPage;
+            const pageQuotes = quotes.slice(startIndex, endIndex);
 
             // Resumen
             const totalRevenue = quotes.reduce((sum, quote) => sum + quote.total, 0);
@@ -875,27 +1030,31 @@
             let html = `
                 <div class="quote-summary">
                     <h3>📈 Resumen de Cotizaciones</h3>
-                    <p><strong>Total cotizaciones:</strong> ${quotes.length} | 
+                    <p><strong>Total encontradas:</strong> ${quotes.length} | 
+                       <strong>Mostrando:</strong> ${startIndex + 1}-${Math.min(endIndex, quotes.length)} |
                        <strong>Ingresos potenciales:</strong> ${totalRevenue.toFixed(2)}€ | 
-                       <strong>Promedio por cotización:</strong> ${averageQuote.toFixed(2)}€</p>
+                       <strong>Promedio:</strong> ${averageQuote.toFixed(2)}€</p>
                 </div>
             `;
             
-            // Lista de cotizaciones
-            quotes.forEach(quote => {
+            // Lista de cotizaciones para la página actual
+            pageQuotes.forEach(quote => {
                 const date = new Date(quote.date).toLocaleString('es-ES');
+                const source = quote.source || 'Web';
                 
                 html += `
                     <div class="quote-card">
                         <div class="quote-header-info">
                             <div class="quote-client">
-                                <h4>👤 ${quote.user.name}</h4>
+                                <h4>👤 ${quote.user.name} ${source === 'Telegram' ? '📱' : '🌐'}</h4>
                                 <p>📧 ${quote.user.email}</p>
                                 <p>📞 ${quote.user.phone}</p>
+                                <p><small>📊 Fuente: ${source}</small></p>
                             </div>
                             <div class="quote-total">
                                 <div class="quote-amount">${quote.total.toFixed(2)}€</div>
                                 <div class="quote-date">${date}</div>
+                                <div class="quote-status">${quote.status || 'Finalizada'}</div>
                             </div>
                         </div>
                         
@@ -918,6 +1077,58 @@
             });
             
             container.innerHTML = html;
+            displayQuotesPagination(totalPages);
+        }
+
+        function displayQuotesPagination(totalPages) {
+            const container = document.getElementById('quotesPagination');
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="pagination-container">';
+            
+            // Información de página
+            html += `<div class="pagination-info">Página ${currentQuotePage} de ${totalPages}</div>`;
+            
+            html += '<div class="pagination-buttons">';
+            
+            // Botón anterior
+            html += `<button class="pagination-btn prev-next" onclick="changeQuotePage(${currentQuotePage - 1})" ${currentQuotePage === 1 ? 'disabled' : ''}>‹ Anterior</button>`;
+            
+            // Números de página
+            const startPage = Math.max(1, currentQuotePage - 2);
+            const endPage = Math.min(totalPages, currentQuotePage + 2);
+            
+            if (startPage > 1) {
+                html += `<button class="pagination-btn" onclick="changeQuotePage(1)">1</button>`;
+                if (startPage > 2) html += '<span style="padding: 8px;">...</span>';
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn ${i === currentQuotePage ? 'active' : ''}" onclick="changeQuotePage(${i})">${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += '<span style="padding: 8px;">...</span>';
+                html += `<button class="pagination-btn" onclick="changeQuotePage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            // Botón siguiente
+            html += `<button class="pagination-btn prev-next" onclick="changeQuotePage(${currentQuotePage + 1})" ${currentQuotePage === totalPages ? 'disabled' : ''}>Siguiente ›</button>`;
+            
+            html += '</div></div>';
+            container.innerHTML = html;
+        }
+
+        function changeQuotePage(newPage) {
+            const totalPages = Math.ceil(filteredQuotes.length / quotesPerPage);
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentQuotePage = newPage;
+                displayQuotes(filteredQuotes);
+            }
         }
 
         function filterQuotes() {
@@ -984,7 +1195,16 @@ ${quote.items.map(item => `• ${item.name}: ${item.quantity} uds × ${item.unit
                 allQuotes = allQuotes.filter(q => q.id != quoteId);
                 localStorage.setItem('printCopyAllQuotes', JSON.stringify(allQuotes));
                 
-                loadAllQuotes();
+                // Actualizar filteredQuotes también
+                filteredQuotes = filteredQuotes.filter(q => q.id != quoteId);
+                
+                // Ajustar página si es necesario
+                const totalPages = Math.ceil(filteredQuotes.length / quotesPerPage);
+                if (currentQuotePage > totalPages && totalPages > 0) {
+                    currentQuotePage = totalPages;
+                }
+                
+                displayQuotes(filteredQuotes);
                 loadStats();
                 showMessage('success', '🗑️ Cotización eliminada');
             }
@@ -1048,7 +1268,9 @@ ${quote.items.map(item => `• ${item.name}: ${item.quantity} uds × ${item.unit
         function clearAllQuotes() {
             if (confirm('⚠️ ¿Estás seguro? Esto eliminará TODAS las cotizaciones guardadas. Esta acción no se puede deshacer.')) {
                 localStorage.removeItem('printCopyAllQuotes');
-                loadAllQuotes();
+                filteredQuotes = [];
+                currentQuotePage = 1;
+                displayQuotes(filteredQuotes);
                 loadStats();
                 showMessage('success', '🧹 Todas las cotizaciones han sido eliminadas');
             }
@@ -1061,19 +1283,49 @@ ${quote.items.map(item => `• ${item.name}: ${item.quantity} uds × ${item.unit
                 localStorage.removeItem('printCopyQuotedItems');
                 localStorage.removeItem('printCopyAllQuotes');
                 
+                filteredQuotes = [];
+                currentQuotePage = 1;
+                
                 loadStats();
-                loadAllQuotes();
+                displayQuotes(filteredQuotes);
                 showMessage('success', '🧹 Todos los datos han sido eliminados');
             }
         }
 
         function showMessage(type, message) {
-            const statusEl = document.getElementById('apiStatus');
-            statusEl.className = `status ${type}`;
-            statusEl.textContent = message;
+            const messageEl = document.createElement('div');
+            messageEl.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                z-index: 1001;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                ${type === 'success' ? 'background: #10b981;' : 
+                  type === 'error' ? 'background: #dc2626;' : 
+                  'background: #4f46e5;'}
+            `;
+            messageEl.textContent = message;
             
+            document.body.appendChild(messageEl);
+            
+            // Animar entrada
             setTimeout(() => {
-                updateStatus();
+                messageEl.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Remover después de 3 segundos
+            setTimeout(() => {
+                messageEl.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (document.body.contains(messageEl)) {
+                        document.body.removeChild(messageEl);
+                    }
+                }, 300);
             }, 3000);
         }
     </script>

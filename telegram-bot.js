@@ -5,9 +5,28 @@ const { Telegraf, Markup } = require('telegraf');
 const fs = require('fs');
 const path = require('path');
 
-// Configuración
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8089240910:AAER0Vvfme-h_NHLQgvXozsH3Rnp5uIYnDg';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+// ⚠️ IMPORTANTE: Las claves DEBEN configurarse como variables de entorno en Coolify
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+// Verificar que las variables de entorno estén configuradas
+if (!BOT_TOKEN) {
+    console.error('❌ ERROR: TELEGRAM_BOT_TOKEN no está configurado');
+    console.error('💡 Solución:');
+    console.error('   1. Ve a tu panel de Coolify');
+    console.error('   2. En Environment Variables, agrega:');
+    console.error('      Name: TELEGRAM_BOT_TOKEN');
+    console.error('      Value: 123456789:ABC-DEF... (tu token de @BotFather)');
+    console.error('   3. Reinicia el servicio');
+    process.exit(1);
+}
+
+console.log('✅ TELEGRAM_BOT_TOKEN configurado correctamente');
+if (OPENAI_API_KEY) {
+    console.log('✅ OPENAI_API_KEY configurado correctamente');
+} else {
+    console.log('⚠️  OPENAI_API_KEY no configurado - usando respuestas inteligentes');
+}
 
 // Crear bot
 const bot = new Telegraf(BOT_TOKEN);
@@ -444,22 +463,35 @@ bot.on('text', (ctx) => {
 
 // Manejar errores
 bot.catch((err, ctx) => {
-    console.error('Error en el bot:', err);
-    ctx.reply('❌ Ocurrió un error. Por favor, inténtalo de nuevo.');
+    console.error('❌ Error en el bot:', err);
+    if (ctx && ctx.reply) {
+        ctx.reply('❌ Ocurrió un error. Por favor, inténtalo de nuevo.');
+    }
 });
 
 // Iniciar bot
-if (BOT_TOKEN === 'TU_BOT_TOKEN_AQUI') {
-    console.log('⚠️  Configura tu TELEGRAM_BOT_TOKEN en las variables de entorno');
-    console.log('💡 Guía: https://core.telegram.org/bots#creating-a-new-bot');
-} else {
-    bot.launch();
-    console.log('🤖 Bot de Telegram iniciado correctamente');
-    console.log('📱 Los usuarios pueden interactuar con @tu_bot_name');
-}
+console.log('🚀 Iniciando bot de Telegram...');
+bot.launch()
+    .then(() => {
+        console.log('✅ Bot de Telegram iniciado correctamente');
+        console.log('📱 Los usuarios pueden buscar tu bot en Telegram');
+        console.log('🔗 Enlace directo: https://t.me/' + BOT_TOKEN.split(':')[0]);
+    })
+    .catch((error) => {
+        console.error('❌ Error al iniciar el bot:', error);
+        console.error('💡 Verifica que el TELEGRAM_BOT_TOKEN sea válido');
+        process.exit(1);
+    });
 
 // Manejar cierre elegante
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => {
+    console.log('🛑 Deteniendo bot de Telegram...');
+    bot.stop('SIGINT');
+});
+
+process.once('SIGTERM', () => {
+    console.log('🛑 Deteniendo bot de Telegram...');
+    bot.stop('SIGTERM');
+});
 
 module.exports = bot;

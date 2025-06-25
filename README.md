@@ -9,8 +9,6 @@ Un chatbot inteligente para la empresa Print & Copy, especializado en proporcion
 - 💼 **Gestión de cotizaciones**: Cálculo automático y cotización en tiempo real
 - 📱 **Diseño responsive**: Funciona en desktop y móvil
 - 💾 **Almacenamiento local**: Guarda datos del usuario y historial
-- 💾 **Guardar cotización**: Botón "Guardar Cotización" para almacenar la
-  cotización actual
 - 🎯 **Base de datos completa**: Todos los productos con precios exactos
 
 ## 🚀 Instalación Rápida
